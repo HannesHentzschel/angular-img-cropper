@@ -14,6 +14,10 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
         restrict: "A",
         link: function (scope, element, attrs) {
             var crop;
+            var _events = {
+                window:{},
+                element:{}
+            };
             var __extends = __extends || function (d, b) {
                     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
                     function __() {
@@ -380,17 +384,25 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                     this.croppedImage = new Image();
                     this.currentlyInteracting = false;
 
+                    removeBoundEvents();
+
+                    _events.window['mousemove'] = this.onMouseMove.bind(this);
+                    _events.window['mouseup'] = this.onMouseUp.bind(this);
+                    _events.window['touchmove'] = this.onTouchMove.bind(this);
+                    _events.window['touchend'] = this.onTouchEnd.bind(this);
+
+                    _events.element['mousedown'] = this.onMouseDown.bind(this);
+                    _events.element['touchstart'] = this.onTouchStart.bind(this);
+
                     angular.element(window)
-                      .off('mousemove.angular-img-cropper mouseup.angular-img-cropper touchmove.angular-img-cropper touchend.angular-img-cropper')
-                      .on('mousemove.angular-img-cropper', this.onMouseMove.bind(this))
-                      .on('mouseup.angular-img-cropper', this.onMouseUp.bind(this))
-                      .on('touchmove.angular-img-cropper', this.onTouchMove.bind(this))
-                      .on('touchend.angular-img-cropper', this.onTouchEnd.bind(this));
+                        .on('mousemove',_events.window['mousemove'])
+                        .on('mouseup', _events.window['mouseup'])
+                        .on('touchmove', _events.window['touchmove'])
+                        .on('touchend', _events.window['touchend']);
 
                     angular.element(canvas)
-                      .off('mousedown.angular-img-cropper touchstart.angular-img-cropper')
-                      .on('mousedown.angular-img-cropper', this.onMouseDown.bind(this))
-                      .on('touchstart.angular-img-cropper', this.onTouchStart.bind(this));
+                        .on('mousedown', _events.element['mousedown'])
+                        .on('touchstart', this.onTouchStart.bind(this));
                 }
 
                 ImageCropper.prototype.resizeCanvas = function (width, height) {
@@ -1100,6 +1112,8 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
                 };
                 ImageCropper.prototype.onMouseMove = function (e) {
 
+                    console.log("mouse moving!");
+
                     if (crop.isImageSet()) {
                         var mousePosition = this.getMousePos(this.canvas, e);
                         this.move(new CropTouch(mousePosition.x, mousePosition.y, 0), e);
@@ -1290,7 +1304,7 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
 
               crop = new ImageCropper(canvas, canvas.width / 2 - width / 2, canvas.height / 2 - height / 2, width, height, keepAspect, touchRadius);
 
-              $(canvas).data('crop.angular-img-cropper', crop);
+              element.data('crop.angular-img-cropper', crop);
 
               if(oldImage) {
                 crop.setImage(oldImage);
@@ -1317,12 +1331,27 @@ angular.module('angular-img-cropper', []).directive("imageCropper", ['$document'
               imageObj.src = newValue;
             }
 
+            function removeBoundEvents(){
+
+                removeEventFor(_events.window, angular.element(window));
+                removeEventFor(_events.element, element);
+
+                function removeEventFor(events, target){
+                    for(var event in events){
+                        target.off(event, events[event]);
+                        delete events[event];
+                    }
+                }
+            }
+
             scope.$watch('cropWidth', setup);
             scope.$watch('cropHeight', setup);
             scope.$watch('keepAspect', setup);
             scope.$watch('touchRadius', setup);
 
             scope.$watch('image', load);
+
+            scope.$on('$destroy', removeBoundEvents);
         }
     };
 }]);
